@@ -16,7 +16,17 @@
     <div class="note">
       <strong>Disclaimer:</strong> Sitio no oficial. Verificá siempre los <a target="_blank" href="https://www.itau.com.uy/inst/beneficios.html">beneficios publicados por Itaú</a>.
     </div>
-    <div id="log"></div>
+
+    <section class="entry">
+      <h2>Últimos cambios</h2>
+      <div id="log"></div>
+    </section>
+
+    <section class="entry">
+      <h2>Catálogo actual</h2>
+      <p class="muted">Listado completo de beneficios vigentes detectados por el monitor.</p>
+      <div id="catalog"></div>
+    </section>
   </main>
 
   <footer>
@@ -25,20 +35,62 @@
 
   <script>
   async function load() {
-    const resp = await fetch('changes.json', {cache: 'no-cache'});
-    const data = await resp.json();
+    const [changes, current] = await Promise.all([
+      fetch('changes.json', {cache: 'no-cache'}).then(r => r.json()).catch(()=>[]),
+      fetch('current.json', {cache: 'no-cache'}).then(r => r.json()).catch(()=>[])
+    ]);
+    renderChanges(changes);
+    renderCatalog(current);
+  }
+
+  function renderChanges(data) {
     const root = document.getElementById('log');
-    if (!data.length) {
-      root.innerHTML = "<p>Sin cambios detectados aún.</p>";
-      return;
-    }
+    if (!data.length) { root.innerHTML = "<p>Sin cambios detectados aún.</p>"; return; }
     root.innerHTML = data.map(entry => {
       const ts = new Date(entry.timestamp).toLocaleString('es-UY');
-      const added = (entry.added||[]).map(it => card(it, "Alta")).join("");
-      const removed = (entry.removed||[]).map(it => card(it, "Baja")).join("");
-      const changed = (entry.changed||[]).map(ch => card(ch.new, "Cambio", ch.old)).join("");
+      const added   = (entry.added  || []).map(it => card(it, "Alta")).join("");
+      const removed = (entry.removed|| []).map(it => card(it, "Baja")).join("");
+      const changed = (entry.changed|| []).map(ch => card(ch.new, "Cambio", ch.old)).join("");
       return `
-        <section class="entry">
-          <h2>${ts}</h2>
-          ${added ? `<h3>Altas</h3><div class="grid">${added}</div>` : ""}
-          ${removed ? `<h3>Bajas</h3><div class="grid">$
+        <section>
+          <h3>${ts}</h3>
+          ${added ? `<h4>Altas</h4><div class="grid">${added}</div>` : ""}
+          ${removed ? `<h4>Bajas</h4><div class="grid">${removed}</div>` : ""}
+          ${changed ? `<h4>Modificados</h4><div class="grid">${changed}</div>` : ""}
+        </section>
+      `;
+    }).join("");
+  }
+
+  function renderCatalog(items) {
+    const root = document.getElementById('catalog');
+    if (!items || !items.length) { root.innerHTML = "<p>Catálogo vacío.</p>"; return; }
+    // Orden simple: % desc (desc), luego título
+    items.sort((a,b)=> (b.percent||0) - (a.percent||0) || (a.title||"").localeCompare(b.title||""));
+    root.innerHTML = `<div class="grid">` + items.map(it => card(it, "Vigente")).join("") + `</div>`;
+  }
+
+  function card(item, badge, oldItem) {
+    const pct = item.percent !== null && item.percent !== undefined ? `<span class="pill">${item.percent}%</span>` : "";
+    const vig = item.vigencia ? `<div class="vig">Vigencia: ${escapeHtml(item.vigencia)}</div>` : "";
+    const oldVig = oldItem && oldItem.vigencia && oldItem.vigencia !== item.vigencia
+      ? `<div class="old">Antes: ${escapeHtml(oldItem.vigencia)}</div>` : "";
+    return `
+      <article class="card">
+        <div class="badge">${badge}</div>
+        <h4>${pct} ${escapeHtml(item.title || "Beneficio")}</h4>
+        <div class="links">
+          <a target="_blank" href="${item.offer_url}">Ver beneficio</a>
+          <a target="_blank" href="${item.page_url}">Página origen</a>
+        </div>
+        ${vig} ${oldVig}
+      </article>
+    `;
+  }
+
+  function escapeHtml(s){return (s||"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));}
+  load();
+  </script>
+</body>
+</html>
+

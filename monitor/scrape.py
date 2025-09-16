@@ -46,12 +46,13 @@ def crawl(seed_urls, allow_patterns, max_depth=2, max_pages=50):
         time.sleep(0.5)
     return pages
 
+
 def main():
     DATA_DIR.mkdir(exist_ok=True, parents=True)
     WEB_DIR.mkdir(exist_ok=True, parents=True)
 
     cfg = yaml.safe_load((ROOT / "monitor" / "sites.yaml").read_text(encoding="utf-8"))
-    pages = crawl(cfg["seed_urls"], cfg["allow_patterns"], cfg.get("max_depth",2), cfg.get("max_pages",50))
+    pages = crawl(cfg["seed_urls"], cfg["allow_patterns"], cfg.get("max_depth", 2), cfg.get("max_pages", 50))
 
     items = []
     for url, html in pages:
@@ -64,6 +65,22 @@ def main():
     if current_path.exists():
         old_items = json.loads(current_path.read_text(encoding="utf-8"))
 
+    # 👉 SIEMPRE publicar catálogo para la web:
+    #    - si hay items nuevos, publicamos esos
+    #    - si vino vacío, mantenemos el catálogo previo (si existía)
+    catalog_for_web = items if items else (old_items or [])
+    (WEB_DIR / "current.json").write_text(
+        json.dumps(catalog_for_web, ensure_ascii=False, indent=2),
+        encoding="utf-8"
+    )
+
+    # Si extracción vacía pero ya había catálogo, no tocar data/ ni cambios
+    if not items and old_items:
+        print("⚠️ Extracción vacía; mantengo catálogo previo y omito cambios.")
+        if not (WEB_DIR / "changes.json").exists():
+            (WEB_DIR / "changes.json").write_text("[]", encoding="utf-8")
+        return
+
     diff = compute_diff(old_items, items)
 
     if diff["added"] or diff["removed"] or diff["changed"]:
@@ -75,9 +92,6 @@ def main():
         log = log[:200]
         changelog_path.write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
         (WEB_DIR / "changes.json").write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
+
     if not (WEB_DIR / "changes.json").exists():
         (WEB_DIR / "changes.json").write_text("[]", encoding="utf-8")
-
-if __name__ == "__main__":
-    main()
-
