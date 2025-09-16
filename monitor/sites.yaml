@@ -1,0 +1,11 @@
+seed_urls:
+  - "https://www.itau.com.uy/inst/beneficios.html"
+  - "https://www.itau.com.uy/inst/restaurantes.html"
+  - "https://www.itau.com.uy/inst/moda.html"
+  - "https://www.itau.com.uy/inst/beneficiosexclusivos.html"
+
+allow_patterns:
+  - "^https://www\\.itau\\.com\\.uy/inst/.*\\.html$"
+
+max_depth: 2
+max_pages: 50

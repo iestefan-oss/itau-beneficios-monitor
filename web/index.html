@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cambios en Beneficios Itaú (UY)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Cambios en Beneficios Itaú (Uruguay)</h1>
+    <p>Fuente: itau.com.uy (páginas públicas de beneficios). Actualización diaria por GitHub Actions.</p>
+  </header>
+
+  <main id="content">
+    <div class="note">
+      <strong>Disclaimer:</strong> Sitio no oficial. Verificá siempre los <a target="_blank" href="https://www.itau.com.uy/inst/beneficios.html">beneficios publicados por Itaú</a>.
+    </div>
+    <div id="log"></div>
+  </main>
+
+  <footer>
+    <small>Monitor open-source. Última build automática por GitHub Actions.</small>
+  </footer>
+
+  <script>
+  async function load() {
+    const resp = await fetch('changes.json', {cache: 'no-cache'});
+    const data = await resp.json();
+    const root = document.getElementById('log');
+    if (!data.length) {
+      root.innerHTML = "<p>Sin cambios detectados aún.</p>";
+      return;
+    }
+    root.innerHTML = data.map(entry => {
+      const ts = new Date(entry.timestamp).toLocaleString('es-UY');
+      const added = (entry.added||[]).map(it => card(it, "Alta")).join("");
+      const removed = (entry.removed||[]).map(it => card(it, "Baja")).join("");
+      const changed = (entry.changed||[]).map(ch => card(ch.new, "Cambio", ch.old)).join("");
+      return `
+        <section class="entry">
+          <h2>${ts}</h2>
+          ${added ? `<h3>Altas</h3><div class="grid">${added}</div>` : ""}
+          ${removed ? `<h3>Bajas</h3><div class="grid">$
